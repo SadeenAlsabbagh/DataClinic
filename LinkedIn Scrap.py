@@ -6,6 +6,7 @@ import time
 from bs4 import BeautifulSoup
 
 driver = webdriver.Chrome()
+#just checking!
 #just checking !
 try:
     # Open LinkedIn
