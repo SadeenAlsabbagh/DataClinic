@@ -6,7 +6,7 @@ import time
 from bs4 import BeautifulSoup
 
 driver = webdriver.Chrome()
-
+#just checking !
 try:
     # Open LinkedIn
     driver.get("https://www.linkedin.com")
