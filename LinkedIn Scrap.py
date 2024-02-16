@@ -5,6 +5,7 @@ import pandas as pd
 import time
 from bs4 import BeautifulSoup
 
+#checking
 driver = webdriver.Chrome()
 try:
     # Open LinkedIn
