@@ -1,47 +1,65 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-import pandas as pd
-import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+import os
 
-driver = webdriver.Chrome()
-try:
-    # Open LinkedIn
+def initialize_driver():
+    driver = webdriver.Chrome()
+    driver.wait = WebDriverWait(driver, 10)
+    return driver
+
+def login_to_linkedin(driver, username, password):
     driver.get("https://www.linkedin.com")
+    username_field = driver.wait.until(EC.presence_of_element_located((By.ID, "session_key")))
+    password_field = driver.wait.until(EC.presence_of_element_located((By.ID, "session_password")))
+    
+    username_field.send_keys(username)
+    password_field.send_keys(password)
 
-    # Find the login elements
-    username = driver.find_element(By.ID, "session_key")
-    password = driver.find_element(By.ID, "session_password")
-
-    # Enter your LinkedIn credentials
-    username.send_keys('princenoworkhere@gmail.com')
-    password.send_keys('DataClinic')
-
-    # Submit the login form
     login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
     login_button.click()
 
+def search_jobs(driver, keyword):
     driver.get("https://www.linkedin.com/jobs")
-    search_box = driver.find_element(By.CLASS_NAME, "jobs-search-box__text-input")
-    search_box.send_keys("Sustainability")
+    search_box = driver.wait.until(EC.presence_of_element_located((By.CLASS_NAME, "jobs-search-box__text-input")))
+    search_box.send_keys(keyword)
     search_box.send_keys(Keys.RETURN)
 
-    time.sleep(10)  # Adjusted wait time
+def scrape_jobs(driver):
+    # Wait until the job card containers are loaded
+    driver.wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'job-card-container')))
 
+    # Get the current page's source and create a BeautifulSoup object
     soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    job_postings = soup.find_all('div', class_='job-posting-class-or-id')  # Replace with actual class or id
+    
+    # Find all job posting containers using the class name
+    job_postings = soup.find_all('div', class_='job-card-container')
 
     for job in job_postings:
-        title = job.find('h3', class_='title-class').get_text()  # Replace with actual class or id
-        company = job.find('h4', class_='company-class').get_text()  # Replace with actual class or id
-        # Extract other details in a similar way
+        # Extract the title using the previously identified class name
+        title_element = job.find('a', class_='disabled ember-view job-card-container__link job-card-list__title')
+        title = title_element.get_text(strip=True) if title_element else 'No Title Found'
+        
+        # Extract the company name using the class identified from the screenshot
+        company_element = job.find('span', class_='job-card-container__primary-description')
+        company = company_element.get_text(strip=True) if company_element else 'No Company Found'
 
         print(f"Title: {title}, Company: {company}")
 
+def main():
+    linkedin_username = os.environ.get('LINKEDIN_USERNAME')
+    linkedin_password = os.environ.get('LINKEDIN_PASSWORD')
 
+    driver = initialize_driver()
+    try:
+        login_to_linkedin(driver, 'princenoworkhere@gmail.com', 'DataClinic')
+        search_jobs(driver, "Sustainability")
+        scrape_jobs(driver)
+    finally:
+        driver.quit()
 
-finally:
-    driver.quit()
-
+if __name__ == "__main__":
+    main()
