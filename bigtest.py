@@ -28,6 +28,24 @@ def login_to_linkedin(driver, username, password):
     login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
     login_button.click()
 
+def scrape_job_details(driver, job_link):
+    # Construct the full URL
+    full_url = f"https://www.linkedin.com{job_link}"
+    # Navigate to the job link
+    driver.get(full_url)
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    job_postings = soup.find_all('div', class_='job-view-layout jobs-details')
+    
+    for job in job_postings:
+        # Extract the title using the correct class names
+        title_element = job.find('h1', class_='t-24 t-bold job-details-jobs-unified-top-card__job-title')
+        title = title_element.get_text(strip=True) if title_element else 'No Title Found'
+
+        
+
+        print(f"Title: {title}")
+    time.sleep(2)  # Adjust based on your needs
+
 def search_jobs(driver):
         driver.get(f"https://www.linkedin.com/jobs/search/?keywords={'Sustainability'}&location={'United States'}")
 
@@ -41,7 +59,7 @@ def scroll_job_list(driver):
     )
     
     # Define the scroll increment (smaller value for slower scroll)
-    scroll_increment = 100
+    scroll_increment = 80
 
     while True:
         # Scroll down by a small increment
@@ -66,63 +84,39 @@ def scroll_job_list(driver):
 
 # Use this function in your scrape_jobs function to scroll within the job listing
 
-def scrape_jobs(driver, max_pages=1):
+def scrape_jobs(driver, max_pages):
+    base_url = f"https://www.linkedin.com/jobs/search/?keywords=Sustainability&location=United%20States"
     current_page = 1
+    jobs_per_page = 25  # Assuming 25 jobs per page; adjust based on actual pagination behavior
+
     while current_page <= max_pages:
-        scroll_job_list(driver)
+        # Construct the URL for the current page
+        paginated_url = f"{base_url}&start={(current_page - 1) * jobs_per_page}"
+        driver.get(paginated_url)
+        scroll_job_list(driver)  # Ensure the job list is fully loaded
 
-        # Get the current page's source and create a BeautifulSoup object
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        
-        # Find all job posting containers using the class name
         job_postings = soup.find_all('div', class_='job-card-container')
-        
-        # Extract job details
+
+        job_links = []
         for job in job_postings:
-            # Extract the title and company name using the correct class names
-            title_element = job.find('a', class_='job-card-list__title')
-            title = title_element.get_text(strip=True) if title_element else 'No Title Found'
-    
-            company_element = job.find('span', class_='job-card-container__primary-description')
-            company = company_element.get_text(strip=True) if company_element else 'No Company Found'
+            job_link_element = job.find('a', class_='job-card-list__title')
+            job_link = job_link_element['href'] if job_link_element and job_link_element.has_attr('href') else None
+            if job_link:
+                job_links.append(job_link)
 
-            location_element = job.find('li', class_='job-card-container__metadata-item')
-            location = location_element.get_text(strip=True) if location_element else 'No Location Found'
+        for job_link in job_links:
+            scrape_job_details(driver, job_link)
 
-            # The job link is typically within an 'a' tag's 'href' attribute
-            job_link_element = job.find('a', class_='job-card-list__title')  # Assuming the class name for the 'a' tag is correct
-            job_link = job_link_element['href'] if job_link_element and job_link_element.has_attr('href') else 'No Job Link Found'
-
-            print(f"Title: {title}, Company: {company}, Location: {location}, Job Link: {job_link}")
-            
-        # Attempt to navigate to the next page
-        try:
-            pagination_controls = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'artdeco-pagination'))
-            )
-            next_page_buttons = pagination_controls.find_elements(By.TAG_NAME, 'button')
-            next_page_button = next_page_buttons[current_page]  # current_page is zero-indexed
-            next_page_button.click()
-            current_page += 1
-            time.sleep(2)  # Wait for the page to load
-        except (NoSuchElementException, TimeoutException):
-            print("Pagination controls not found on the page.")
-            break
-        except IndexError:
-            print("No more pages to navigate to. Exiting loop.")
-            break
-        except Exception as e:
-            print(f"An error occurred while trying to navigate pages: {e}")
-            break
-
-        time.sleep(2)
-
+        current_page += 1
+        time.sleep(2)  # Wait a bit before moving to the next page to ensure LinkedIn's server has time to process
+        
 def main():
     driver = initialize_driver()
     try:
         login_to_linkedin(driver, 'princenoworkhere@gmail.com', 'DataClinic')
         search_jobs(driver)
-        scrape_jobs(driver)
+        scrape_jobs(driver, 2)
     finally:
         driver.quit()
 
