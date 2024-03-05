@@ -41,7 +41,18 @@ def scrape_job_details(driver, job_link):
         title_element = job.find('h1', class_='t-24 t-bold job-details-jobs-unified-top-card__job-title')
         title = title_element.get_text(strip=True) if title_element else 'No Title Found'
 
-        
+        company_element = job.find('span', class_='job-card-container__primary-description')
+        company = company_element.get_text(strip=True) if company_element else 'No Company Found'
+
+        #location_element = job.find('li', class_='job-card-container__metadata-item')
+        #location = location_element.get_text(strip=True) if location_element else 'No Location Found'
+
+            # The job link is typically within an 'a' tag's 'href' attribute
+        job_link_element = job.find('a', class_='job-card-list__title')  # Assuming the class name for the 'a' tag is correct
+        job_link = job_link_element['href'] if job_link_element and job_link_element.has_attr('href') else 'No Job Link Found'
+
+
+
 
         print(f"Title: {title}")
     time.sleep(2)  # Adjust based on your needs
@@ -59,7 +70,7 @@ def scroll_job_list(driver):
     )
     
     # Define the scroll increment (smaller value for slower scroll)
-    scroll_increment = 80
+    scroll_increment = 250
 
     while True:
         # Scroll down by a small increment
