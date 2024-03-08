@@ -29,36 +29,29 @@ def login_to_linkedin(driver, username, password):
     login_button.click()
 
 def scrape_job_details(driver, job_link):
-    # Construct the full URL
-    full_url = f"https://www.linkedin.com{job_link}"
+    # Construct the full URL if not already complete
+    if not job_link.startswith('http'):
+        full_url = f"https://www.linkedin.com{job_link}"
+    else:
+        full_url = job_link
+
     # Navigate to the job link
     driver.get(full_url)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
-    job_postings = soup.find_all('div', class_='job-view-layout jobs-details')
+
+    title_element = soup.find('h1', class_="t-24 t-bold job-details-jobs-unified-top-card__job-title")
+    title = title_element.get_text(strip=True) if title_element else 'No Title Found'
     
-    for job in job_postings:
-        # Extract the title using the correct class names
-        title_element = job.find('h1', class_='t-24 t-bold job-details-jobs-unified-top-card__job-title')
-        title = title_element.get_text(strip=True) if title_element else 'No Title Found'
+    company_element = soup.find('div', class_='job-details-jobs-unified-top-card__primary-description-container')  # Update class as per actual
+    company = company_element.get_text(strip=True) if company_element else 'No Company Found'
 
-        company_element = job.find('span', class_='job-card-container__primary-description')
-        company = company_element.get_text(strip=True) if company_element else 'No Company Found'
+    # Extract job ID from the job link
+    job_id = full_url.split('/')[-2] if '/' in full_url else 'No Job ID Found'
 
-        #location_element = job.find('li', class_='job-card-container__metadata-item')
-        #location = location_element.get_text(strip=True) if location_element else 'No Location Found'
-
-            # The job link is typically within an 'a' tag's 'href' attribute
-        job_link_element = job.find('a', class_='job-card-list__title')  # Assuming the class name for the 'a' tag is correct
-        job_link = job_link_element['href'] if job_link_element and job_link_element.has_attr('href') else 'No Job Link Found'
+    print(f"Job ID: {job_id}, Title: {title}, Company: {company}, Job Link: {full_url}")
 
 
-
-
-        print(f"Title: {title}")
     time.sleep(2)  # Adjust based on your needs
-
-def search_jobs(driver):
-        driver.get(f"https://www.linkedin.com/jobs/search/?keywords={'Sustainability'}&location={'United States'}")
 
 def scroll_job_list(driver):
     job_list_container = WebDriverWait(driver, 10).until(
@@ -70,7 +63,7 @@ def scroll_job_list(driver):
     )
     
     # Define the scroll increment (smaller value for slower scroll)
-    scroll_increment = 250
+    scroll_increment = 400
 
     while True:
         # Scroll down by a small increment
@@ -126,8 +119,7 @@ def main():
     driver = initialize_driver()
     try:
         login_to_linkedin(driver, 'princenoworkhere@gmail.com', 'DataClinic')
-        search_jobs(driver)
-        scrape_jobs(driver, 2)
+        scrape_jobs(driver, 1)
     finally:
         driver.quit()
 
